@@ -119,11 +119,12 @@ struct {
   //if( HAL_UART_Receive(&huart1, str+1, 2, 20) != HAL_OK ) continue;
 
   // ???????? ???????
-		if ( str[0] == 0xA1)
+	if ( str[0] == 0xA1)
 	{
 		if (par.blue == 1)
 		{
 		        par.blue-=1;
+			HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,0);
 			HAL_UART_Transmit(&huart1, (uint8_t *)(ERROR), 5, 30);
 		}
 		if (par.blue == 0)
@@ -138,11 +139,13 @@ struct {
 		if (par.red == 1)
 		{
 		        par.red-=1;
+			HAL_GPIO_WritePin(LD3_GPIO_Port,LD3_Pin,0);
 			HAL_UART_Transmit(&huart1, (uint8_t *)(ERROR), 5, 30);
 		}
 		if (par.red == 0)
 		{
 			par.red+=1;
+			HAL_GPIO_WritePin(LD3_GPIO_Port,LD3_Pin,1);
 			HAL_UART_Transmit(&huart1, (uint8_t *)(RED), 100, 30);
 		}
 	}
@@ -151,11 +154,13 @@ struct {
 		if (par.green == 1)
 		{
 		        par.green-=1;
+			HAL_GPIO_WritePin(LD1_GPIO_Port,LD1_Pin,0);
 			HAL_UART_Transmit(&huart1, (uint8_t *)(ERROR), 5, 30);
 		}
 		if (par.green == 0)
 		{
 			par.green+=1;
+			HAL_GPIO_WritePin(LD1_GPIO_Port,LD1_Pin,1);
 			HAL_UART_Transmit(&huart1, (uint8_t *)(GREEN), 100, 30);
 		}
 	}
@@ -169,6 +174,7 @@ struct {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    str[0]=0;
   }
   /* USER CODE END 3 */
 
