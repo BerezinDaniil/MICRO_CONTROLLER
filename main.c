@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
+  * <h2><center>&copy; Copyright (c) 2022 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
   * This software component is licensed by ST under BSD 3-Clause license,
@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "math.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,9 +32,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define I2C_ADDRESS                                              0x3C
-#define I2C_TIMEOUT                                              100
-#define Button_read HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -43,33 +40,34 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
+TIM_HandleTypeDef htim1;
+
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
-
+uint8_t str[3];
+char command;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
+static void MX_TIM1_Init(void);
+static void MX_USART2_UART_Init(void);
+void HAL_UART_RxHalfCpltCallback (UART_HandleTypeDef * huart)
+{
+	if ((str[0] == 0xAF) && (str[2] == 0xAB))
+	{
+		command = str[1];
+	}
+}
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t regData[10 ];
-uint8_t regAddress[100];
-double DataX = 0;
-double DataY = 0;
-double DataZ = 0;
-double Axy = 0;
-double Axz = 0;
-double Ayz = 0;
-
 /* USER CODE END 0 */
-
 /**
   * @brief  The application entry point.
   * @retval int
@@ -98,37 +96,79 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
+  MX_TIM1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-	regAddress[0] = 0;
-	regAddress[1] = 0;
-	regAddress[2] = 0;
-	regAddress[3] = 0;
-
-	HAL_I2C_Master_Transmit(&hi2c1, I2C_ADDRESS, regAddress, 4, I2C_TIMEOUT);
-	HAL_I2C_Master_Transmit(&hi2c1, I2C_ADDRESS, regAddress, 1, I2C_TIMEOUT);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	while (1)
-	{
+	 const char ERROR[5] = "ERROR";
+	 const char BLUE[21] = "The blue diode is on";
+	 const char RED[20] = "The red diode is on";
+	 const char GREEN[22] = "The green diode is on";
+
+struct {
+  uint8_t blue;
+  uint8_t red;
+  uint8_t green;
+} par = {0, 0, 0};
+  while (1)
+  {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		regAddress[0] = 3;
-		HAL_I2C_Master_Transmit(&hi2c1, I2C_ADDRESS, regAddress, 1, I2C_TIMEOUT);
-		HAL_I2C_Master_Receive(&hi2c1, I2C_ADDRESS, regData, 6, I2C_TIMEOUT);
-		HAL_Delay(200);
-		DataX = (double)((((uint16_t)regData[0])<<8) | ((uint16_t)regData[1]));
-		DataY = (double)((((uint16_t)regData[2])<<8) | ((uint16_t)regData[3]));
-		DataZ = (double)((((uint16_t)regData[4])<<8) | ((uint16_t)regData[5]));
-		
-		Axy =  atan2(DataY, DataX)*57;
-		Axz =  atan2(DataZ, DataX)*57;
-		Ayz =  atan2(DataZ, DataY)*57;
+	HAL_UART_Receive_IT(&huart2, str, 3);
+	switch (command=0x00,command=0x01,command=0x02){
+	case 0x00:
+		if (par.blue == 1)
+			{
+				par.blue-=1;
+				HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,0);
+				HAL_UART_Transmit(&huart2, (uint8_t *)(ERROR), 5, 30);
+			}
+			else
+			{
+				par.blue+=1;
+				HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,1);
+				HAL_UART_Transmit(&huart2, (uint8_t *)(BLUE), 100, 30);
+			}
+		break;
+	case 0x01:
+				if (par.red == 1)
+			{
+				par.red-=1;
+				HAL_GPIO_WritePin(LD3_GPIO_Port,LD3_Pin,0);
+				HAL_UART_Transmit(&huart2, (uint8_t *)(ERROR), 5, 30);
+			}
+			else
+			{
+				par.red+=1;
+				HAL_GPIO_WritePin(LD3_GPIO_Port,LD3_Pin,1);
+				HAL_UART_Transmit(&huart2, (uint8_t *)(RED), 100, 30);
+			}
+		break;
+	case 0x02:
+		if (par.green == 1)
+			{
+				par.green-=1;
+				HAL_GPIO_WritePin(LD1_GPIO_Port,LD1_Pin,0);
+				HAL_UART_Transmit(&huart2, (uint8_t *)(ERROR), 5, 30);
+			}
+			else
+			{
+				par.green+=1;
+				HAL_GPIO_WritePin(LD1_GPIO_Port,LD1_Pin,1);
+				HAL_UART_Transmit(&huart2, (uint8_t *)(GREEN), 100, 30);
+			}
+		break;
+	default:
+		command=0xFF;
+		break;
 	}
+
+  }
   /* USER CODE END 3 */
 }
 
@@ -172,36 +212,81 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief I2C1 Initialization Function
+  * @brief TIM1 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_I2C1_Init(void)
+static void MX_TIM1_Init(void)
 {
 
-  /* USER CODE BEGIN I2C1_Init 0 */
+  /* USER CODE BEGIN TIM1_Init 0 */
 
-  /* USER CODE END I2C1_Init 0 */
+  /* USER CODE END TIM1_Init 0 */
 
-  /* USER CODE BEGIN I2C1_Init 1 */
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 1599;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 65535;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN I2C1_Init 2 */
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
 
-  /* USER CODE END I2C1_Init 2 */
+  /* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
 
 }
 
@@ -217,10 +302,10 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
